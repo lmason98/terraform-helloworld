@@ -98,14 +98,14 @@ resource "aws_key_pair" "ssh-key" {
 
 # postgres db for the instance
 resource "aws_db_instance" "postgres" {
-  identifier        = "tf-db"
-  allocated_storage = 10
-  engine            = "postgres"
-  port              = 5432
-  instance_class    = "db.t3.micro"
-  name              = "tfdb"
-  username          = "root"
-  password          = "rootroot"
+  identifier             = "tf-db"
+  allocated_storage      = 10
+  engine                 = "postgres"
+  port                   = 5432
+  instance_class         = "db.t3.micro"
+  name                   = "tfdb"
+  username               = "root"
+  password               = "rootroot"
   vpc_security_group_ids = [aws_security_group.db_rules.id]
 }
 
