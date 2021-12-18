@@ -42,7 +42,28 @@ data "aws_ami" "ubuntu" {
 # Resources
 resource "aws_default_vpc" "default" {}
 
-resource "aws_security_group" "allow_ssh_http_80" {
+# DB security
+resource "aws_security_group" "db_rules" {
+  name   = "only_allow_from_created_instance"
+  vpc_id = aws_default_vpc.default.id
+
+  ingress {
+    from_port   = "5432"
+    to_port     = "5432"
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# EC2 instance security
+resource "aws_security_group" "server_rules" {
   name   = "allow_ssh_http_80"
   vpc_id = aws_default_vpc.default.id
 
@@ -69,25 +90,36 @@ resource "aws_security_group" "allow_ssh_http_80" {
   }
 }
 
+# key pair to ssh into new instance
 resource "aws_key_pair" "ssh-key" {
   key_name   = "ssh-key"
   public_key = var.ssh_public_key
 }
 
+# postgres db for the instance
+resource "aws_db_instance" "postgres" {
+  identifier        = "tf-db"
+  allocated_storage = 10
+  engine            = "postgres"
+  port              = 5432
+  instance_class    = "db.t3.micro"
+  name              = "tfdb"
+  username          = "root"
+  password          = "rootroot"
+  vpc_security_group_ids = [aws_security_group.db_rules.id]
+}
+
+# ubuntu LTS nginx instance
 resource "aws_instance" "nginx" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.allow_ssh_http_80.id]
-
-  tags = {
-    Name = "nginx-hello-world"
-  }
+  vpc_security_group_ids = [aws_security_group.server_rules.id]
 
   # Add public key so we can ssh into the new instance
   key_name = "ssh-key"
 
   # Execute this bash script
-  user_data = file("sh/install_nginx.sh")
+  user_data = file("sh/setup.sh")
 }
 
 # Output
@@ -99,4 +131,9 @@ output "aws_instance_public_dns" {
 output "aws_instance_public_ip" {
   description = "Public ip for new AWS instance"
   value       = aws_instance.nginx.public_ip
+}
+
+output "postgres_instance_endpoint" {
+  description = "Public ip for new AWS instance"
+  value       = aws_db_instance.postgres.endpoint
 }

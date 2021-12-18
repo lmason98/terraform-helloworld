@@ -20,7 +20,7 @@ HTML="
 "
 
 sudo apt-get update -y
-sudo apt-get install -y nginx
+sudo apt-get install -y nginx postresql
 
 sudo systemctl start nginx
 sudo systemctl enable nginx
