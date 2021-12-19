@@ -8,11 +8,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "lmason98-tf-state-210901047"
-    key = "terraform.tfstate"
-    region = "us-west-1"
+    bucket         = "lmason98-tf-state-210901047"
+    key            = "terraform.tfstate"
+    region         = "us-west-1"
     dynamodb_table = "tf_lock"
-    encrypt = true
+    encrypt        = true
   }
 }
 
@@ -61,14 +61,14 @@ resource "aws_s3_bucket" "tf-state" {
 
 # state locking
 resource "aws_dynamodb_table" "tf_lock" {
-    name         = var.locks_name
-    billing_mode = "PAY_PER_REQUEST"
-    hash_key     = "LockID"
+  name         = var.locks_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
 
-    attribute {
-        name = "LockID"
-        type = "S"
-    }
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
 }
 
 # Resources

@@ -1,6 +1,6 @@
 variable "region" {
   description = "AWS resource region"
-  default = "us-west-1"
+  default     = "us-west-1"
 }
 
 variable "ssh_public_key" {
@@ -10,10 +10,10 @@ variable "ssh_public_key" {
 
 variable "state_name" {
   description = "S3 State bucket name, must be unique"
-  default = "lmason98-tf-state-210901047"
+  default     = "lmason98-tf-state-210901047"
 }
 
 variable "locks_name" {
   description = "DynamoDB locks table name"
-  default = "tf_lock"
+  default     = "tf_lock"
 }
