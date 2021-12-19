@@ -1,19 +1,18 @@
 # Variables
-variable "region" {
-  default = "us-west-1"
-}
-
-variable "ssh_public_key" {
-  description = "public key so we can ssh into the new instance"
-  default     = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCrQpZWyNaepKv4wtrAJ7P8qSIWH4JiI/YB3lmhMtcWFkVLjlVwDI/pKuuax9gdCfX87PlaWM4UY6zrRew9I5yOdOgvnqrm6cYorFLJX3oQFzGRU3P6WCzU7rXJk0vu6ZmNE2k6H1vU/phhkhVAoWJp5AxVB1HQ3FDIOnGA5yj0i1dlSs9f7nW0ChO3r9XI3IbVxhSQrxGjtchFD/N4lh+/Kc1Urw4sJ6QMFRpgoReaiNB0HbpCM2Cvi2FlRB9c4oZ7OiJK3oq/3TBk6UK3WJJUtD52+6t8PvtaeNVxqdzTJDjAZn6aIPUh8PkkYRJWr80Ji5seNJUfWFBmCZR02HBy+ZX2EXLm8Q9ho6Fcqp0NShqazIo4BoXy712fALU0R1Lyf2Y5bcOpL53QQlUG4idYg6nbRjzBsX93K2N9QH0iBQi6BPSfuaT8jMwaAFB3fBfPESV9+IMRIUjQ9g+GppCsBVelaZB+YXEMJYN94zLsJX48rzyhOnnEmVnD+YbmJzEx7uGLBY/ZUJkxu0Q2RyBuzFTAXcLfg5JhVe5+IvzHeITGBR0fFaPoYs8DZO69gOPfpe4OvOee+EmQwvvoKAY/u0kvx7Oq887YCJCoaUOkVaPsfM9Z1xcK2V6Unnr8R1dK456EZnsZsr66GunIAUPEoZsfISQT4eqCsSyh/tw7uw== lmason98@gmail.com"
-}
-
 terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 3.5.0"
     }
+  }
+
+  backend "s3" {
+    bucket = "lmason98-tf-state-210901047"
+    key = "terraform.tfstate"
+    region = "us-west-1"
+    dynamodb_table = "tf_lock"
+    encrypt = true
   }
 }
 
@@ -37,6 +36,39 @@ data "aws_ami" "ubuntu" {
   }
 
   owners = ["099720109477"] # Canonical
+}
+
+# S3 state
+resource "aws_s3_bucket" "tf-state" {
+  bucket = var.state_name
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  versioning {
+    enabled = true
+  }
+
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+}
+
+# state locking
+resource "aws_dynamodb_table" "tf_lock" {
+    name         = var.locks_name
+    billing_mode = "PAY_PER_REQUEST"
+    hash_key     = "LockID"
+
+    attribute {
+        name = "LockID"
+        type = "S"
+    }
 }
 
 # Resources
@@ -91,8 +123,8 @@ resource "aws_security_group" "server_rules" {
 }
 
 # key pair to ssh into new instance
-resource "aws_key_pair" "ssh-key" {
-  key_name   = "ssh-key"
+resource "aws_key_pair" "ssh_key" {
+  key_name   = "ssh_key"
   public_key = var.ssh_public_key
 }
 
@@ -116,24 +148,8 @@ resource "aws_instance" "nginx" {
   vpc_security_group_ids = [aws_security_group.server_rules.id]
 
   # Add public key so we can ssh into the new instance
-  key_name = "ssh-key"
+  key_name = "ssh_key"
 
   # Execute this bash script
   user_data = file("sh/setup.sh")
-}
-
-# Output
-output "aws_instance_public_dns" {
-  description = "Public url for new AWS instance"
-  value       = aws_instance.nginx.public_dns
-}
-
-output "aws_instance_public_ip" {
-  description = "Public ip for new AWS instance"
-  value       = aws_instance.nginx.public_ip
-}
-
-output "postgres_instance_endpoint" {
-  description = "Public ip for new AWS instance"
-  value       = aws_db_instance.postgres.endpoint
 }
